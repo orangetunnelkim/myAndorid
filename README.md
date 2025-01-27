@@ -151,3 +151,12 @@ couponList=new ArrayList<>();
 <br>
 useData의 쿠폰 갯수를 couponList라는 리사이클러 뷰 용 리스트의 쿠폰갯수 인자로 전달합니다.
 <br>이렇게 되면 입력한 휴대폰과 매칭되는 쿠폰 갯수들이 동적으로 표시되어 입체적으로 객체 관리가 된것입니다.
+<br><br><br>
+```java
+used.add(new Coupon (useCoupon,coupon.getValue()));
+```
+<br>
+
+**used리스트는** 
+사용자가 사용할 쿠폰의 갯수를 누르고 확인 입력시 생성되는 리스트로
+사용될 쿠폰의 전체금액을 표시하고, 결제시 회원정보를 업데이트 하기위해 뒷단으로 전달 해야합니다.
