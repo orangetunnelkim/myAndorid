@@ -1,5 +1,6 @@
 ## 안드로이드 스튜디오를 활용한 카페 키오스크 개발 프로젝트☕
 >XML과 자바를 기반으로 제작된 앱입니다.
+### 프로젝트 기간: 2주
 ### 팀원 [백건우](https://github.com/gunwoo100/ProJect2)🙍‍♂️, [엄정현](https://github.com/Natanal-H/my-kiosk-android)🙍‍♂️, 이새로미🙍‍♀️, 김지욱🙍‍♂️ 
 (이름 클릭시 해당 팀원이 담당했던 섹션의 소스 자료를 참고할 수 있습니다.)
 #### 이 자료는 스탬프를 적립하고, 쿠폰을 사용하는 부분에 대한 내용입니다.
@@ -161,3 +162,110 @@ used.add(new Coupon (useCoupon,coupon.getValue()));
 **used리스트는** <br>
 사용자가 사용할 쿠폰의 갯수를 누르고 확인 입력시 생성되는 리스트로<br>
 사용될 쿠폰의 전체금액을 표시하고, 결제시 회원정보를 업데이트 하기위해 뒷단으로 전달 해야합니다.
+<br><br><br>
+
+### 4-2.흐름 관리
+>**콜백리스너**
+
+처음엔 사용자에게 보여지는 화면에따라 클래스를 나누고 
+<br>다음 다이얼로그로 이동할때 객체를 생성하면서 현재의 다이얼로그를 종료하는 방법으로 흐름을 관리했습니다.
+<br>하지만, 코드가 많아지면서 어떤 인자값이 필요한지, 상황에따른 다음객체를 생성할지 여부를 가독성있게 판단해야할 필요를 느꼈습니다.
+<br>그래서 **couponController** 클래스로 다이얼로그의 생애주기와 인자들의 이동을 관리했습니다.
+<br>
+```java
+public void showDialog() {
+        dialog1 = new Dialog1(context, stamp, totalCount);
+        dialog1.setDialogListener(state -> { //seton 메써드호출 / onDialogResult 매써드정의
+            if (state.equals("member")) {
+                dialog2 = new Dialog2(context, dialog1.getUserdata(), stamp, totalCount);
+                dialog2.setDialogListener(state2 -> {
+                    useCoupon = dialog2.getTotalCoupon();
+                    if (useCoupon != 0) ((CheckOrderActivity) context).setCoupon(useCoupon);
+                    if (state2.equals("useCoupon")) {//적립하고, 쿠폰 사용하고
+                        savecoupon = new saveCoupon(dialog2.getUsed(), stamp, dialog1.getUserdata());
+                    } else savecoupon = new saveCoupon(null, stamp, dialog1.getUserdata());
+
+                });
+                dialog2.show();
+            }
+        });
+        dialog1.show();
+        Log.v("stamp","stamp: "+stamp);
+    }
+```
+쿠폰 컨트롤러 클래스입니다.
+<br>
+<br> 이부분에서의 핵심은
+<br> dialog1.setDialogListener, dialog2.setDialogListener 처럼 각 다이얼로그에 인터페이스로 정의된 **콜백리스너**를 사용하는 것입니다.
+<br> 다이얼로그가 열리고 그 다이얼로그가 dismiss 되기 전까지 자바런처가 기다리는게 아니고
+<br> 아래로 계속해서 코드를 읽으며 수행합니다.
+<br><br><br>
+```java
+ public interface DialogListener{
+        void onDialogResult(String state);
+    }
+
+    public void setDialogListener(DialogListener listener) {
+        this.listener = listener;
+    }
+```
+```java
+ phoneSearch.setOnClickListener(c -> {
+            initializeUserData();
+            userdata = searchUserByPhone(Sendphone); // 전화번호에 맞는 객체 하나 찾아옴
+            if (Sendphone != null) {
+                if (userdata != null) {
+                    if (listener != null) {
+                        listener.onDialogResult("member"); //메써드호출
+                        dismiss();
+                    }
+```
+Dialog1 클래스입니다.
+<br>
+<br>
+Dialog1에서 이벤트가 발생했고 컨트롤러에서 dialog1.setDialogListener를 호출했다면 listener는 null이 아닌 객체가 되어
+<br>컨트롤러에 정의된 onDialogResult에 member라는 인자값을 주면서 비동기식으로 컨트롤러의 구문을 실행하는것입니다.
+<br>위에서 설명드렸던 바와 같이 컨트롤러의 흐름은 멈춘것이아니라 런처가 아래로 계속 실행은 되고있지만,
+<br>if 조건문에 의해 마치 멈춰있는 것처럼만 보이는 것입니다.
+
+<br><br><br>
+>**싱글톤 패턴**
+<br>
+
+
+쿠폰컨트롤러의 객체가 단일객체만을 생성하도록 처리하지 않을 경우 데이터의 끊김이 발생합니다.
+<br>
+![KakaoTalk_20250127_191613528_02](https://github.com/user-attachments/assets/4b1f013f-8aa6-40d6-82f2-9bf7494e7e26)
+<br>
+**①** 에서 사용자로부터 사용할 쿠폰을 입력받으면 
+<br> saveCopon이라는 회원정보를 업데이트하는 클래스에 객체를 올려두고 대기합니다.
+<br> **②** 실행시 saveCopon클래스 내에 함수를 실행시켜 회원정보의 데이터를 덮어씁니다.
+<br>하지만 coponContoroller 처음에 올려둔 객체를 매인액티비티에서 전역변수로 선언하여 **②** 클릭시
+<br> **①** 에서 올려둔 객체가 null값이 되는 문제를 해결하기 어려웠습니다.
+<br> Garbage Collector가 더이상 사용하지않는 메모리로 간주하고 삭제할 가능성이 있습니다.
+<br>
+```java
+public static CouponController getInstance() {
+        if (instance == null) {
+            instance = new CouponController();
+        }
+        return instance;
+    }
+```
+
+쿠폰컨트롤러 클래스입니다.
+<br><br><br>
+
+```java
+ public void onClickCouponRedeem(View view) {
+        couponController=couponController.getInstance();
+        couponController = new CouponController(this,CoffeeData.getTotalCount(),CoffeeData.getTotalPrice());
+        couponController.showDialog() ;    //
+
+    } //쿠폰 추가
+```
+
+CheckOrderActivity 클래스 입니다.
+
+<br> 이렇게 싱글톤 처리를 해주면 처음에 생성한 인스턴스를 잃어버리지 않고 **②** 에서 사용이 가능합니다.
+    
