@@ -270,3 +270,152 @@ CheckOrderActivity 클래스 입니다.
 
 <br> 이렇게 싱글톤 처리를 해주면 처음에 생성한 인스턴스를 잃어버리지 않고 **②** 에서 사용이 가능합니다.
     
+<br><br><br>
+#### **리사이클러뷰**
+```java
+ RecyclerView recyclerView= findViewById(R.id.rView);
+        adapter= new CouponAdapter(couponList,this);
+        recyclerView.setAdapter(adapter);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+```
+
+<br> Dialog2 클래스의 onCreate에서 리사이클러뷰를 만듭니다.
+<br><br><br>
+```java
+public void onBindViewHolder(@NonNull CouponViewHolder holder, int position) {
+        Coupon coupon = couponList.get(position);
+        if (coupon.getQty() > 0) {
+            holder.bind(coupon);
+            holder.itemView.setVisibility(View.VISIBLE);
+        } else {
+            holder.itemView.setVisibility(View.GONE);
+        }
+        final int pos = position;
+
+        holder.itemView.setOnClickListener(v -> {
+            if (rListener != null&&pos!=RecyclerView.NO_POSITION) {
+                    rListener.onItemClciked(pos, coupon);
+            }//위치값을 전달한다.
+        });
+
+    }
+public void updateItem(int pos,int newValue){
+        couponList.get(pos).setQty(newValue);
+        notifyItemChanged(pos);
+    }
+```
+
+<br>
+
+```java
+public void bind(Coupon coupon) {
+            nameTextView.setText(coupon.getName());
+            descriptionTextView.setText(coupon.getDescription());
+            PeriodTextView.setText(coupon.getPeriod());
+            availableTextView.setText(coupon.getAvailable());
+            String qtyString = coupon.getQty() + "";
+            qty.setText(qtyString + "개");
+        }
+```
+
+<br>CouponAdapter 클래스입니다.
+<br>
+<br> holder는 CouponViewHolder의 객체입니다.
+만들어진 뷰홀더에 couponList(쿠폰 상세정보)를 하나씩 뷰에 붙입니다.
+<br> 리사이클러뷰는 리스트 뷰처럼 화면에서 사라지는 뷰들을 삭제하고 아래 나타나는 뷰를 새로 만들지 않고
+<br> 화면에서 사라지는 뷰를 재활용합니다.
+<br> ![20250128_153026](https://github.com/user-attachments/assets/b0549c5d-62a8-4388-a388-931726f0692a)
+<br> 많은양의 아이템을 다룰때 뷰를 재생산 할 필요없이 메모리를 절약할 수 있습니다.
+<br>
+```java
+   int remain=(coupon.getQty()-useCoupon); //남은 쿠폰갯수
+                        coupon.setQty(remain);
+                        adapter.updateItem(position,remain);
+```
+
+<br> Dialog2 클래스입니다. 사용하고 남은 쿠폰을 리사이클러뷰에 업데이트하기위해
+<br> 이벤트 리스너를 활용했습니다.
+
+<br>
+
+#### **데이터 수정 클래스**
+<br> **회원**인 경우에는
+<br> 결제될때 변경값이 저장 되어야합니다. 
+<br> 회원인 경우에만 saveCopon 클래스에 객체를 올리도록 흐름을 제어하고 
+
+<br>
+
+```java
+ public void completePayment( ) {
+        if (GlobalVariable.isPhoneNumberSet()) {
+            int index = UserData.getIndexByPhone(GlobalVariable.getPhoneNumberAdded010());
+            int earnedPoints = UserData.userList.get(index).getPoints()
+                    + GlobalVariable.getPointsToBeEarned()
+                    - GlobalVariable.getRedeemedPoints();
+            UserData.userList.get(index).setPoints(earnedPoints);
+        }
+
+        if (couponController.getSavecoupon()!=null) couponController.couponStampset();//쿠폰추가
+    }
+```
+
+<br> CheckOrderActivity 클래스입니다.
+<br> 결제버튼을 누르면 객체가 null값이 아닐때 회원정보를 업데이트 하는 함수를 실행시키는것입니다.
+<br> 
+
+```java
+protected void finalCouponSet() {
+
+        for (int i = 0; i < Used.size(); i++) {
+            if (Used.get(i).getValue() == 1000) {
+                userData.setCoupon_1000(userData.getCoupon_1000() - Used.get(i).getUsedQty());
+            } else if (Used.get(i).getValue() == 2000) {
+                userData.setCoupon_2000(userData.getCoupon_2000() - Used.get(i).getUsedQty());
+            } else if (Used.get(i).getValue() == 3000) {
+                userData.setCoupon_3000(userData.getCoupon_3000() - Used.get(i).getUsedQty());
+            } else if (Used.get(i).getValue() == 4000) {
+                userData.setCoupon_4000(userData.getCoupon_4000() - Used.get(i).getUsedQty());
+            } else if (Used.get(i).getValue() == 5000) {
+                userData.setCoupon_5000(userData.getCoupon_5000() - Used.get(i).getUsedQty());
+            }
+            finalCoupon = "";
+            for (Coupon use : Used) {
+                finalCoupon += use.getValue() + "원 쿠폰" + use.getUsedQty() + "개 사용 \n";
+            }
+            Log.v("5000coupon","5000: "+userData.getCoupon_5000());
+        }
+    }
+```
+
+<br> saveCoupon 클래스에서 사용한 쿠폰의 갯수만큼 빼서 저장하는 함수가 실행됩니다.
+
+<br><br><br>
+## 5.결론
+> **어려웠던점**
+
+<br>
+
+**쿠폰 컨트롤러**에서
+<br>다이얼로그가 열리고 닫힐때까지 런처가 기다리지 않는다는걸 알아내는게 눈에보이지도 않고 오류를 발생하는 부분이라 어려웠습니다.
+<br> **쿠폰 사용**
+<br> 만들어 놓은 객체가 싱글톤 패턴처리가 안되어 계속해서 객체를 재생성하며 null값이 되는걸 찾는것 역시 헤맸던 부분입니다.
+<br> **리사이클러뷰**에 
+<br>사용된 쿠폰의 갯수차감을 반영하는 부분이 안되다가
+<br> 쿠폰 컨트롤러처럼 콜백리스너를 활용하여 이벤트가 발생할때 뷰를 비동기식으로 바꾸는걸 참고해서 해결할 수 있었습니다.
+<br><br><br>
+
+>**프로젝트를 하며 느낀점**
+
+<br>
+생각지도 못했던 많은 자잘한 부분들이 진행할수록 문제가 됐습니다.
+<br> 예를들어 쿠폰 사용금액이 결제금액을 넘는다거나, 아무것도 입력하지 않았을때,
+<br> 전화번호를 불러오고 쿠폰을 사용하지 않았을때와 같이 
+<br> 처음 설계시에 생각하지 않았던 부분들을 제어해야 하는 경우가 많았습니다.
+<br> 그것에대한 기능을 세련되게 사용자 관점에서 제공할 것인가
+<br> 아니면 피로도를 생각해서 적당히 강제성을 부여할 것인가를 선택하는 문제도 있었습니다.
+<br> 알고있는 지식의 한계와 마감기한이 있었기에 어디에 에너지를 써야할지 체력을 안배해야 했습니다.
+<br> 앞으론 더 많은 컴퓨터 관련 지식을 습득하여 시간절약도 하고 
+<br> 상상하는 것들을 쉽게 표현 할 수 있도록 공부를 많이 해야겠다고 느꼈습니다. 
+
+<br> **감사합니다**
+
